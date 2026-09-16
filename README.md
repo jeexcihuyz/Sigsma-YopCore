@@ -38,7 +38,7 @@ pip install curl_cffi beautifulsoup4
 ## 🛠️ Quick Usage
 
 ```python
-from sigsma_yopcore import YopmailKiller
+from main import YopmailKiller
 
 def main():
     # Initialize the core client
