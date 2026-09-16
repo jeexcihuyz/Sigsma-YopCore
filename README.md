@@ -24,3 +24,19 @@ Make sure you have Python 3.8+ installed, then install the required dependencies
 
 ```bash
 pip install -r requirements.txt
+
+🛠️ Quick Usage
+
+import asyncio
+from sigsma_yopcore import *
+
+async def main():
+    # Your implementation here
+    pass
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+🛡️ Disclaimer
+
+This tool is developed for educational purposes and personal automation testing only. The author is not responsible for any misuse of this software.
