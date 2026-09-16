@@ -30,7 +30,7 @@ Clone the repository and install the required dependencies:
 ```bash
 git clone https://github.com/jeexcihuyz/Sigsma-YopCore.git
 cd Sigsma-YopCore
-pip install -r requirements.txt
+pip install curl_cffi beautifulsoup4
 ```
 
 ---
