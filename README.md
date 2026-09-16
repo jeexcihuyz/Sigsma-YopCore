@@ -1,15 +1,26 @@
-# 🧨 Yopmail-Killer
-An advanced, lightweight, and anti-bot resistant Yopmail API Wrapper written in Python. 
-Built to survive Cloudflare and hCaptcha in 2026 without using heavy headless browsers.
+<div align="center">
 
-Unlike other libraries on GitHub that use standard HTTP requests (which get instantly blocked by Yopmail's WAF) or hardcoded tokens, this wrapper uses **TLS Fingerprint Spoofing** via `curl_cffi` to perfectly impersonate Chrome 120.
+# ⚡ Sigsma-YopCore
+### High-Performance Yopmail Scraper & TLS Bypass Engine
 
-## 🌟 Why is this better?
-*   ✅ **No Hardcoded Tokens:** Dynamically extracts `yp`, `yj`, and API version on every session.
-*   ✅ **TLS Spoofing:** Perfect JA3/HTTP2 fingerprinting. Yopmail thinks you are a real human using Google Chrome.
-*   ✅ **Zero Headless Browsers:** No Puppeteer, no Playwright. Pure HTTP requests. Very fast and consumes almost 0 RAM.
-*   ✅ **Smart Cookie Handling:** Automatically generates human-like `ytime` cookies.
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 📦 Requirements
+</div>
+
+---
+
+## 🚀 About Sigsma-YopCore
+**Sigsma-YopCore** is an advanced, high-performance **Yopmail scraper** and API wrapper designed to bypass anti-bot challenges, Cloudflare, and browser verification using cutting-edge TLS fingerprint spoofing. Built with pure asynchronous Python.
+
+## ✨ Key Features
+* **TLS Fingerprint Spoofing:** Powered by `curl_cffi` to mimic real browser TLS profiles (Chrome 120, Safari, Edge) and dodge WAF/Cloudflare blocks.
+* **Asynchronous Engine:** Fully built with `asyncio` for blazing-fast concurrent operations.
+* **Robust Session Handler:** Intelligent token extraction and cookie management for seamless inbox polling.
+* **Lightweight & Clean:** Minimal dependencies with maximum execution speed.
+
+## 📦 Requirements & Installation
+Make sure you have Python 3.8+ installed, then install the required dependencies:
+
 ```bash
-pip install curl_cffi beautifulsoup4
+pip install -r requirements.txt
