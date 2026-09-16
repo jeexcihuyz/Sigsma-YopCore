@@ -98,9 +98,9 @@ class YopmailKiller:
             
             emails = []
             for div in soup.find_all("div", class_="m"):
-                mail_id = "m" + div.get("id") if div.get("id") else None
-                sender = div.find(class_="lmf").text if div.find(class_="lmf") else "Unknown"
-                subject = div.find(class_="lms_m").text if div.find(class_="lms_m") else "No Subject"
+                mail_id = div.get("id") if div.get("id") else None
+                sender = div.find(class_="lmf").text.strip() if div.find(class_="lmf") else "Unknown"
+                subject = div.find(class_="lms").text.strip() if div.find(class_="lms") else "No Subject"
                 
                 if mail_id:
                     emails.append({"id": mail_id, "sender": sender, "subject": subject})
@@ -110,15 +110,35 @@ class YopmailKiller:
             return []
 
     def read_mail(self, mail_id):
-        """Reads the body of a specific email by ID."""
+        """Reads the body of a specific email, handling both iframe structures and direct #mail blocks."""
         if not self._is_ready: return None
         
-        self.session.headers.update({"Referer": f"{self.url_base}"})
+        self.session.headers.update({"Referer": f"{self.url_base}wm"})
         try:
             res = self.session.get(f"{self.url_base}mail", params={"b": self.username, "id": mail_id}, timeout=10)
             soup = BeautifulSoup(res.text, "html.parser")
+            
+            # 1. Check if message is wrapped inside an iframe (#ifmail)
+            iframe = soup.find("iframe", {"id": "ifmail"})
+            if iframe and iframe.get("src"):
+                iframe_src = iframe.get("src")
+                if not iframe_src.startswith("http"):
+                    iframe_src = self.url_base + iframe_src.lstrip("/")
+                
+                res_iframe = self.session.get(iframe_src, timeout=10)
+                soup_iframe = BeautifulSoup(res_iframe.text, "html.parser")
+                body = soup_iframe.find(id="mailmillieu") or soup_iframe.body
+                return body.text.strip() if body else res_iframe.text.strip()
+            
+            # 2. Fallback directly to #mail div (Direct Render Cases like Alight Motion)
+            mail_div = soup.find(id="mail")
+            if mail_div:
+                return mail_div.text.strip()
+            
+            # 3. Final fallback to #mailmillieu
             body = soup.find(id="mailmillieu")
             return body.text.strip() if body else "Message body is empty."
+            
         except Exception as e:
             print(f"[-] Failed to read message: {e}")
             return None
@@ -131,7 +151,6 @@ if __name__ == "__main__":
     print(" 🚀 YOPMAIL KILLER - PROOF OF CONCEPT 2026 🚀 ")
     print("="*55)
     
-    # User-Friendly Input Prompt
     target_input = input("[?] Enter target Yopmail address (leave blank for random): ").strip()
     
     if not target_input:
@@ -144,7 +163,6 @@ if __name__ == "__main__":
     print("\n" + "-"*55)
     bot = YopmailKiller(target)
     
-    # Fetch Inbox
     inbox = bot.get_inbox()
     
     print(f"\n[📥] Inbox for {target}:")
