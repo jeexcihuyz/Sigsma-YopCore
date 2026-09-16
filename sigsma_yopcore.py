@@ -48,7 +48,7 @@ class YopmailKiller:
             soup = BeautifulSoup(res1.text, "html.parser")
             yp_input = soup.find("input", {"name": "yp"})
             if not yp_input:
-                raise Exception("Failed to extract YP token. Blocked by Cloudflare?")
+                raise Exception("Failed to extract YP token. Blocked by Cloudflare WAF?")
             self.yp_token = yp_input.get("value")
             
             time.sleep(random.uniform(0.5, 1.5))
@@ -109,16 +109,43 @@ class YopmailKiller:
             print(f"[-] Failed to fetch inbox: {e}")
             return []
 
+    def _clean_text(self, raw_text):
+        """Cleans up messy HTML whitespace for CLI rendering."""
+        # 1. Remove excessive whitespace/tabs from each line
+        lines = [line.strip() for line in raw_text.splitlines()]
+        
+        # 2. Recombine the lines
+        cleaned_text = "\n".join(lines)
+        
+        # 3. Reduce multiple consecutive newlines (3 or more) to a maximum of 2 (paragraph spacing)
+        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
+        return cleaned_text.strip()
+
     def read_mail(self, mail_id):
-        """Reads the body of a specific email, handling both iframe structures and direct #mail blocks."""
+        """Reads the body of a specific email, preserving URLs."""
         if not self._is_ready: return None
         
         self.session.headers.update({"Referer": f"{self.url_base}wm"})
+        
+        # FIX 1: Add 'm' prefix to mail_id for HTML render mode
+        fetch_id = f"m{mail_id}" if mail_id.startswith("e_") else mail_id
+        
         try:
-            res = self.session.get(f"{self.url_base}mail", params={"b": self.username, "id": mail_id}, timeout=10)
+            res = self.session.get(f"{self.url_base}mail", params={"b": self.username, "id": fetch_id}, timeout=10)
             soup = BeautifulSoup(res.text, "html.parser")
             
-            # 1. Check if message is wrapped inside an iframe (#ifmail)
+            # 1. Check direct render (Modern Yopmail behavior)
+            mail_div = soup.find(id="mail")
+            if mail_div:
+                # FIX 2: Preserve the href links so you can extract OTP/Magic Links
+                for a_tag in mail_div.find_all('a'):
+                    if a_tag.get('href'):
+                        a_tag.replace_with(f"{a_tag.text} [ {a_tag.get('href')} ]")
+                
+                raw_text = mail_div.get_text(separator="\n")
+                return self._clean_text(raw_text)
+            
+            # 2. Check if message is wrapped inside an iframe (Legacy behavior)
             iframe = soup.find("iframe", {"id": "ifmail"})
             if iframe and iframe.get("src"):
                 iframe_src = iframe.get("src")
@@ -128,16 +155,13 @@ class YopmailKiller:
                 res_iframe = self.session.get(iframe_src, timeout=10)
                 soup_iframe = BeautifulSoup(res_iframe.text, "html.parser")
                 body = soup_iframe.find(id="mailmillieu") or soup_iframe.body
-                return body.text.strip() if body else res_iframe.text.strip()
+                raw_text = body.get_text(separator="\n") if body else res_iframe.text
+                return self._clean_text(raw_text)
             
-            # 2. Fallback directly to #mail div (Direct Render Cases like Alight Motion)
-            mail_div = soup.find(id="mail")
-            if mail_div:
-                return mail_div.text.strip()
-            
-            # 3. Final fallback to #mailmillieu
+            # 3. Final fallback
             body = soup.find(id="mailmillieu")
-            return body.text.strip() if body else "Message body is empty."
+            raw_text = body.get_text(separator="\n") if body else "Message body is empty."
+            return self._clean_text(raw_text)
             
         except Exception as e:
             print(f"[-] Failed to read message: {e}")
@@ -147,9 +171,9 @@ class YopmailKiller:
 # INTERACTIVE CLI FOR EASY TESTING
 # ==========================================
 if __name__ == "__main__":
-    print("="*55)
+    print("="*60)
     print(" 🚀 YOPMAIL KILLER - PROOF OF CONCEPT 2026 🚀 ")
-    print("="*55)
+    print("="*60)
     
     target_input = input("[?] Enter target Yopmail address (leave blank for random): ").strip()
     
@@ -160,7 +184,7 @@ if __name__ == "__main__":
     else:
         target = target_input if "@yopmail.com" in target_input else f"{target_input}@yopmail.com"
 
-    print("\n" + "-"*55)
+    print("\n" + "-"*60)
     bot = YopmailKiller(target)
     
     inbox = bot.get_inbox()
@@ -169,12 +193,40 @@ if __name__ == "__main__":
     if not inbox:
         print("[-] The inbox is currently empty. Try sending an email first.")
     else:
+        # Display the list of all available messages
         for idx, mail in enumerate(inbox):
-            print(f"  {idx+1}. From: {mail['sender']} | Subject: {mail['subject']}")
+            print(f"  [{idx+1}] From: {mail['sender']}")
+            print(f"      Subject: {mail['subject']}")
             
-        print("\n[📖] Reading the most recent message:")
-        print("-" * 55)
-        content = bot.read_mail(inbox[0]["id"])
-        print(content)
-        print("-" * 55)
-        print("[+] Test completed successfully!")
+        # Interactive loop to allow the user to read multiple messages
+        while True:
+            print("\n" + "-"*60)
+            choice = input(f"[?] Select a message to read (1 - {len(inbox)}) or type '0' to exit: ").strip()
+            
+            if choice == '0':
+                print("[*] Exiting inbox. Goodbye!")
+                break
+                
+            try:
+                idx_choice = int(choice) - 1
+                
+                # Validate if the chosen number is within the list range
+                if 0 <= idx_choice < len(inbox):
+                    print(f"\n[📖] Reading Message #{idx_choice + 1}:")
+                    print("="*60)
+                    
+                    content = bot.read_mail(inbox[idx_choice]["id"])
+                    
+                    if content:
+                        print(content)
+                    else:
+                        print("[Empty Message / Failed to extract]")
+                        
+                    print("="*60)
+                else:
+                    print("[-] Invalid number. Out of range. Please try again.")
+                    
+            except ValueError:
+                print("[-] Invalid input format! Please enter a valid number.")
+                
+    print("\n[+] Execution completed.")
